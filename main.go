@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -21,57 +21,76 @@ type tcinstance struct {
 // HTTP Basic Auth
 
 func main() {
-	tc := tcinstance{"localhost", 8081, "/manager/html", false, false, false}
-	tc.check()
 	guesses := buildGuesses()
-	for _, guess := range guesses {
-		fmt.Printf("Checking Username: %s Password: %s\n", guess.username, guess.password)
+	addrs := expandNetwork(&net.IPNet{IP: net.IPv4(127, 0, 0, 0), Mask: net.CIDRMask(24, 32)})
+	ports := [6]int{8080, 8443, 80, 443, 8000, 8888}
+	channel := make(chan tcinstance, 20)
+	for gonum := 0; gonum < 10; gonum++ {
+		go func() {
+			tc := <-channel
+			tc.check()
+			for _, guess := range guesses {
+				success, _ := request(&tc, guess.username, guess.password)
+				if success {
+					break
+				}
+			}
+		}()
 	}
-	fmt.Printf("Manager available: %t", tc.managerAvailable)
-}
+	for _, element := range addrs {
+		for _, port := range ports {
+			tc := tcinstance{element.String(), port, "/manager/html", false, false, false}
+			go func() { channel <- tc }()
 
-func buildRequestURL(secure bool, host string, port int, managerPath string) string {
-	if secure {
-		return "https://" + host + ":" + strconv.Itoa(port) + managerPath
+		}
 	}
-	return "http://" + host + ":" + strconv.Itoa(port) + managerPath
+
 }
 
 func (tc *tcinstance) check() {
 	client := &http.Client{
-		Timeout: time.Second * 15,
+		Timeout: time.Second * 3,
 	}
+	log.Printf("[-] Checking %s\n", buildRequestURL(false, tc.host, tc.port, tc.managerPath))
+
 	resp, err := client.Get(buildRequestURL(false, tc.host, tc.port, tc.managerPath))
 	if err != nil {
-		tc.managerAvailable = false
 		tc.checked = true
 		tc.finished = true
 		return
 	}
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
+		log.Printf("[-] Manager not found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
 		tc.managerAvailable = false
-	} else if resp.StatusCode == 403 {
+	} else if resp.StatusCode == http.StatusForbidden {
 		tc.managerAvailable = false
-	} else if resp.StatusCode == 401 {
+	} else if resp.StatusCode == http.StatusUnauthorized {
 		tc.managerAvailable = true
-		fmt.Printf("Manager found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
+		log.Printf("[*] Manager found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
 	} else {
 		fmt.Print(resp.StatusCode)
 	}
 	tc.checked = true
 }
 
-func request(tc *tcinstance, username string, password string) (status int) {
+func request(tc *tcinstance, username string, password string) (success bool, err error) {
+	if !tc.managerAvailable {
+		return false, nil
+	}
 	client := &http.Client{
 		Timeout: time.Second * 15,
 	}
-	req, err := http.NewRequest("GET", buildRequestURL(false, tc.host, tc.port, tc.managerPath), nil)
+	url := buildRequestURL(false, tc.host, tc.port, tc.managerPath)
+	log.Printf("Requesting %s\n", url)
+	req, err := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error: %s", err)
-		return -1
+		return false, err
 	}
-	log.Printf("%d", resp.StatusCode)
-	return 0
+	if resp.StatusCode == http.StatusOK {
+		log.Printf("[+] Success! %s:%s on %s\n", username, password, url)
+		return true, nil
+	}
+	return false, nil
 }
