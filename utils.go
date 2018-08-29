@@ -14,12 +14,9 @@ import (
 
 // TcInstance represents one possible Tomcat Manager instance
 type TcInstance struct {
-	host             string
-	port             uint
-	managerPath      string
-	checked          bool
-	managerAvailable bool
-	finished         bool
+	host        string
+	port        uint
+	managerPath string
 }
 
 // ScannerConfig holds the global configuration
@@ -79,11 +76,12 @@ func parseStringToNetwork(rawString *string, randomizeHosts *bool) []net.IP {
 	return expandNetwork(&net.IPNet{IP: net.IPv4(ipArr[0], ipArr[1], ipArr[2], ipArr[3]), Mask: net.CIDRMask(int(netRange), 32)}, *randomizeHosts)
 }
 
-func buildRequestURL(secure bool, host string, port uint, managerPath string) string {
+func buildRequestURL(secure bool, instance *TcInstance) string {
+	target := instance.host + ":" + strconv.FormatUint(uint64(instance.port), 10) + instance.managerPath
 	if secure {
-		return "https://" + host + ":" + strconv.FormatUint(uint64(port), 10) + managerPath
+		return "https://" + target
 	}
-	return "http://" + host + ":" + strconv.FormatUint(uint64(port), 10) + managerPath
+	return "http://" + target
 }
 
 func expandNetwork(network *net.IPNet, randomize bool) []net.IP {
@@ -106,5 +104,5 @@ func expandNetwork(network *net.IPNet, randomize bool) []net.IP {
 // Used to track how long the execution takes
 func timeTrack(start time.Time) {
 	elapsed := time.Since(start)
-	fmt.Printf("Completed in %s", elapsed)
+	fmt.Printf("Completed in %s\n", elapsed)
 }

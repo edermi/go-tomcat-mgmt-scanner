@@ -1,14 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
 
 var guesses []Guess
 var scannerConfig ScannerConfig
+var successfullLogins map[TcInstance]Guess
 
 func main() {
 	scannerConfig = parseCommandLineArgs()
@@ -16,9 +19,13 @@ func main() {
 	guesses = buildGuesses()
 	workQueue := make(chan TcInstance, 20) // This channel is used to pass work to the goroutines
 	var wg sync.WaitGroup                  // The WaitGroup is used to wait for all goroutines to finish at the end
+	successfullLogins = make(map[TcInstance]Guess)
 	spawnWorkers(&wg, workQueue)
 	fillQueue(workQueue)
 	wg.Wait() // Wait for goroutines to finish
+	for key := range successfullLogins {
+		fmt.Printf("[>] %s:%s at %s\n", successfullLogins[key].username, successfullLogins[key].password, (key.host + ":" + strconv.FormatUint(uint64(key.port), 10) + key.managerPath))
+	}
 }
 
 // This function fills the workQueue channel with tcinstances that are scanned
@@ -33,7 +40,7 @@ func fillQueue(workQueue chan<- TcInstance) {
 				log.Printf("[*] ~%d0%% (%d/%d)\n", tenths, progress, numTargets)
 				tenths++
 			}
-			tc := TcInstance{element.String(), port, scannerConfig.managerPath, false, false, false}
+			tc := TcInstance{element.String(), port, scannerConfig.managerPath}
 			workQueue <- tc
 			progress++
 		}
@@ -55,11 +62,12 @@ func spawnWorkers(wg *sync.WaitGroup, workQueue <-chan TcInstance) {
 				if ok == false { // If the channel is closed, we are done
 					break
 				}
-				tc.check(client, false)
-				for _, guess := range guesses {
-					success, _ := request(&tc, guess.username, guess.password)
-					if success {
-						break
+				if tc.check(client, false) {
+					for _, guess := range guesses {
+						success, _ := request(&tc, &guess)
+						if success {
+							break
+						}
 					}
 				}
 			}
@@ -67,56 +75,50 @@ func spawnWorkers(wg *sync.WaitGroup, workQueue <-chan TcInstance) {
 	}
 }
 
-func (tc *TcInstance) check(client *http.Client, TLSenabled bool) {
-	//log.Printf("[-] Checking %s\n", buildRequestURL(false, tc.host, tc.port, tc.managerPath))
+func (tc *TcInstance) check(client *http.Client, TLSenabled bool) (managerAvailable bool) {
 	var resp *http.Response
 	var err error
 	if TLSenabled {
-		resp, err = client.Get(buildRequestURL(true, tc.host, tc.port, tc.managerPath))
+		resp, err = client.Get(buildRequestURL(true, tc))
 	} else {
-		resp, err = client.Get(buildRequestURL(false, tc.host, tc.port, tc.managerPath))
+		resp, err = client.Get(buildRequestURL(false, tc))
 	}
 	if err != nil {
 		//log.Println(err.Error()) // For debugging socket issues
-		tc.checked = true
-		tc.finished = true
-		return
+		return false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
 		log.Printf("[-] Manager not found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
-		tc.managerAvailable = false
+		return false
 	} else if resp.StatusCode == http.StatusForbidden {
 		log.Printf("[-] Manager not found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
-		tc.managerAvailable = false
+		return false
 	} else if resp.StatusCode == http.StatusUnauthorized {
-		tc.managerAvailable = true
 		log.Printf("[+] Manager found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
+		return true
 	} else if resp.StatusCode == http.StatusBadRequest {
-		tc.check(client, true)
+		return tc.check(client, true)
 	} else {
 		log.Printf("[*] HTTP %d at %s:%d%s\n", resp.StatusCode, tc.host, tc.port, tc.managerPath)
+		return false
 	}
-	tc.checked = true
 }
 
-func request(tc *TcInstance, username string, password string) (success bool, err error) {
-	if !tc.managerAvailable {
-		return false, nil
-	}
+func request(tc *TcInstance, guess *Guess) (success bool, err error) {
 	client := &http.Client{
 		Timeout: time.Second * 5,
 	}
-	url := buildRequestURL(false, tc.host, tc.port, tc.managerPath)
-	log.Printf("Requesting %s\n", url)
+	url := buildRequestURL(false, tc)
 	req, err := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(guess.username, guess.password)
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
 	}
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("[$] Success! %s:%s on %s\n", username, password, url)
+		log.Printf("[$] Success! %s:%s on %s\n", guess.username, guess.password, url)
+		successfullLogins[*tc] = *guess
 		return true, nil
 	}
 	return false, nil
