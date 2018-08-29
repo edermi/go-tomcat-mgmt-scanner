@@ -6,6 +6,8 @@ A simple scanner to find and brute force tomcat manager logins.
 
 This is just a toy project to learn and get used to golang, feedback is appreciated!
 
+Current project version: 1.0 Alpha
+
 # About
 
 A simple brute force scanner that tries to identify tomcat manager applications. If such a manager is found, it tries to find valid login credentials by trying common combinations.
