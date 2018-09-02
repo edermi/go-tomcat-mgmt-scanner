@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 )
+
+// Debug is used for more verbose output messages
+var Debug bool
 
 var guesses []Guess
 var scannerConfig ScannerConfig
@@ -24,7 +26,7 @@ func main() {
 	fillQueue(workQueue)
 	wg.Wait() // Wait for goroutines to finish
 	for key := range successfullLogins {
-		fmt.Printf("[>] %s:%s at %s\n", successfullLogins[key].username, successfullLogins[key].password, (key.host + ":" + strconv.FormatUint(uint64(key.port), 10) + key.managerPath))
+		prettyPrintLn(profit, fmt.Sprintf("%s:%s at %s", successfullLogins[key].username, successfullLogins[key].password, (key.host+":"+strconv.FormatUint(uint64(key.port), 10)+key.managerPath)))
 	}
 }
 
@@ -37,7 +39,7 @@ func fillQueue(workQueue chan<- TcInstance) {
 	for _, element := range scannerConfig.targetRange {
 		for _, port := range scannerConfig.ports {
 			if progress > tenths*(numTargets/10) {
-				log.Printf("[*] ~%d0%% (%d/%d)\n", tenths, progress, numTargets)
+				prettyPrintLn(info, fmt.Sprintf("~%d0%% (%d/%d)", tenths, progress, numTargets))
 				tenths++
 			}
 			tc := TcInstance{element.String(), port, scannerConfig.managerPath}
@@ -84,23 +86,23 @@ func (tc *TcInstance) check(client *http.Client, TLSenabled bool) (managerAvaila
 		resp, err = client.Get(buildRequestURL(false, tc))
 	}
 	if err != nil {
-		//log.Println(err.Error()) // For debugging socket issues
+		prettyPrintLn(debug, err.Error()) // For debugging socket issues
 		return false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		log.Printf("[-] Manager not found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
+		prettyPrintLn(badnews, fmt.Sprintf("Manager not found at %s:%d%s", tc.host, tc.port, tc.managerPath))
 		return false
 	} else if resp.StatusCode == http.StatusForbidden {
-		log.Printf("[-] Manager not found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
+		prettyPrintLn(badnews, fmt.Sprintf("Manager not found at %s:%d%s", tc.host, tc.port, tc.managerPath))
 		return false
 	} else if resp.StatusCode == http.StatusUnauthorized {
-		log.Printf("[+] Manager found at %s:%d%s\n", tc.host, tc.port, tc.managerPath)
+		prettyPrintLn(goodnews, fmt.Sprintf("Manager found at %s:%d%s", tc.host, tc.port, tc.managerPath))
 		return true
 	} else if resp.StatusCode == http.StatusBadRequest {
 		return tc.check(client, true)
 	} else {
-		log.Printf("[*] HTTP %d at %s:%d%s\n", resp.StatusCode, tc.host, tc.port, tc.managerPath)
+		prettyPrintLn(info, fmt.Sprintf("HTTP %d without authentication at %s:%d%s", resp.StatusCode, tc.host, tc.port, tc.managerPath))
 		return false
 	}
 }
@@ -117,7 +119,7 @@ func request(tc *TcInstance, guess *Guess) (success bool, err error) {
 		return false, err
 	}
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("[$] Success! %s:%s on %s\n", guess.username, guess.password, url)
+		prettyPrintLn(profit, fmt.Sprintf("Success! %s:%s on %s", guess.username, guess.password, url))
 		successfullLogins[*tc] = *guess
 		return true, nil
 	}

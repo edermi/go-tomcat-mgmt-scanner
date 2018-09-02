@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/fatih/color"
 )
 
 // TcInstance represents one possible Tomcat Manager instance
@@ -27,17 +29,66 @@ type ScannerConfig struct {
 	goroutines  uint
 }
 
+// LogType is used to specify if and how information is printed
+type LogType int
+
+const (
+	debug LogType = iota
+	info
+	goodnews
+	badnews
+	profit
+	warning
+	err
+)
+
+var yellow, red, green, cyan func(a ...interface{}) string
+
+func init() {
+	yellow = color.New(color.FgYellow).Add(color.Bold).SprintFunc()
+	red = color.New(color.FgHiRed).Add(color.Bold).SprintFunc()
+	green = color.New(color.FgGreen).Add(color.Bold).SprintFunc()
+	cyan = color.New(color.FgCyan).Add(color.Bold).SprintFunc()
+}
+
+func prettyPrintLn(logType LogType, msg string) {
+	switch logType {
+	case debug:
+		if Debug {
+			log.Printf("%s: %s\n", cyan("[D]"), msg)
+		}
+	case info:
+		log.Printf("%s: %s\n", "[*]", msg)
+	case goodnews:
+		log.Printf("%s: %s\n", green("[+]"), msg)
+	case badnews:
+		log.Printf("%s: %s\n", yellow("[-]"), msg)
+	case profit:
+		log.Printf("%s: %s", green("[$]"), msg)
+	case warning:
+		log.Printf("%s: %s\n", yellow("[-]"), msg)
+	case err:
+		log.Printf("%s: %s\n", red("[X]"), msg)
+	}
+}
+
 func parseCommandLineArgs() ScannerConfig {
 	networkUnparsed := flag.String("target", "", "The target network range in CIDR notation, e.g. 10.10.10.0/24")
 	portsUnparsed := flag.String("ports", "8080,8443,80,443,8000,8888", "Comma separated list of target ports.")
 	managerPathUnparsed := flag.String("managerpath", "/manager/html", "Manager path.")
 	goroutines := flag.Uint("concurrency", 150, "Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'.")
 	randomizeHosts := flag.Bool("randomize", true, "Randomize the order that IP:Port is accessed.")
+	flag.BoolVar(&Debug, "debug", false, "Enable debugging output.")
 	flag.Parse()
 	ips := parseStringToNetwork(networkUnparsed, randomizeHosts)
 	ports := parseStringToPorts(portsUnparsed)
 	managerPath := parseStringToManagerPath(managerPathUnparsed)
 	sc := ScannerConfig{ips, ports, managerPath, *goroutines}
+	prettyPrintLn(info, fmt.Sprintf("Ports to scan: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ports)), ","), "[]"))) // ",".join(ports), but with static types... -.-
+	prettyPrintLn(info, fmt.Sprintf("Manager path: %s", managerPath))
+	prettyPrintLn(info, fmt.Sprintf("Debug is on: %t", Debug))
+	prettyPrintLn(debug, fmt.Sprintf("Concurrent goroutines to use: %d", *goroutines))
+	prettyPrintLn(debug, fmt.Sprintf("Host order is randomized: %t", *randomizeHosts))
 	return sc
 }
 
@@ -65,7 +116,8 @@ func parseStringToNetwork(rawString *string, randomizeHosts *bool) []net.IP {
 	ipString := stringSplitted[0]
 	ipStringSplitted := strings.Split(ipString, ".")
 	if len(ipStringSplitted) != 4 {
-		panic("Error parsing IP address")
+		prettyPrintLn(err, "Error parsing IP address!")
+		panic("Either IP address is missing or format is wrong")
 	}
 	netRange, _ := strconv.ParseUint(stringSplitted[1], 10, 8)
 	var ipArr [4]byte
@@ -104,5 +156,5 @@ func expandNetwork(network *net.IPNet, randomize bool) []net.IP {
 // Used to track how long the execution takes
 func timeTrack(start time.Time) {
 	elapsed := time.Since(start)
-	fmt.Printf("Completed in %s\n", elapsed)
+	prettyPrintLn(info, fmt.Sprintf("Completed in %s\n", elapsed))
 }
