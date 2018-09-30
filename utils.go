@@ -76,7 +76,7 @@ func parseCommandLineArgs() ScannerConfig {
 	networkUnparsed := flag.String("target", "", "The target network range in CIDR notation, e.g. 10.10.10.0/24")
 	portsUnparsed := flag.String("ports", "8080,8443,80,443,8000,8888", "Comma separated list of target ports.")
 	managerPathUnparsed := flag.String("managerpath", "/manager/html", "Manager path.")
-	goroutines := flag.Uint("concurrency", 150, "Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'.")
+	goroutines := flag.Uint("concurrency", 100, "Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'.")
 	randomizeHosts := flag.Bool("randomize", true, "Randomize the order that IP:Port is accessed.")
 	flag.BoolVar(&Debug, "debug", false, "Enable debugging output.")
 	flag.Parse()
