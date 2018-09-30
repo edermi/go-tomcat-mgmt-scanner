@@ -57,7 +57,7 @@ func spawnWorkers(wg *sync.WaitGroup, workQueue <-chan TcInstance) {
 		go func() {
 			defer wg.Done()
 			client := &http.Client{ // We need to initialise our own http client struct
-				Timeout: time.Second * 3, // in order to define our own timeout
+				Timeout: time.Second * 5, // in order to define our own timeout
 			}
 			for {
 				tc, ok := <-workQueue
