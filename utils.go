@@ -117,7 +117,7 @@ func parseStringToNetwork(rawString *string, randomizeHosts *bool) []net.IP {
 	ipStringSplitted := strings.Split(ipString, ".")
 	if len(ipStringSplitted) != 4 {
 		prettyPrintLn(err, "Error parsing IP address!")
-		panic("Either IP address is missing or format is wrong")
+		panic("Either IP address is missing or format is wrong. Try e.g. -target 10.0.0.0/8 or -help")
 	}
 	netRange, _ := strconv.ParseUint(stringSplitted[1], 10, 8)
 	var ipArr [4]byte
