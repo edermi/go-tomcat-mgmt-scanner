@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"log"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -18,6 +18,9 @@ func buildGuesses() []Guess {
 	users := loadUsers()
 	passwords := loadPasswords()
 	guesses = append(guesses, makeGuesses(users, passwords)...)
+	if len(guesses) == 0 {
+		prettyPrintLn(err, "There are no user:password combinations loaded, therefore there won't be any brute force logins")
+	}
 	return guesses
 }
 
@@ -26,7 +29,7 @@ func loadFile(filename string) []string {
 	f, err := os.Open(filename)
 	defer f.Close()
 	if err != nil {
-		log.Printf("File %s not found", filename)
+		prettyPrintLn(warning, fmt.Sprintf("File %s not found", filename))
 		return content
 	}
 	scanner := bufio.NewScanner(f)
