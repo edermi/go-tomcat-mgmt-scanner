@@ -6,6 +6,9 @@ build-jobs: build-x86-linux build-x64-linux build-armv7-linux build-x64-windows 
 
 prepare:
 	mkdir -p ./build
+	cp userpass.txt ./build
+	cp users.txt ./build
+	cp passwords.txt ./build
 
 build-x86-linux: 
 	GOOS=linux GOARCH=386 go build -o build/$(TARGET)-x86-linux . 
