@@ -14,8 +14,10 @@ var Debug bool
 var guesses []Guess
 var scannerConfig ScannerConfig
 var successfullLogins map[TcInstance]Guess
+var version = "1.0"
 
 func main() {
+	prettyPrintLn(info, fmt.Sprintf("go-tomcat-mgmt-scanner version %s", version))
 	scannerConfig = parseCommandLineArgs()
 	defer timeTrack(time.Now()) // Count execution time
 	guesses = buildGuesses()

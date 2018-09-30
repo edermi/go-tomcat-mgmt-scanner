@@ -6,7 +6,7 @@ A simple scanner to find and brute force tomcat manager logins.
 
 This is just a toy project to learn and get used to golang, feedback is appreciated!
 
-Current project version: 1.0 Alpha
+Current project version: 1.0 
 
 # About
 
@@ -17,7 +17,7 @@ The initial wordlists for credential brute forcing are those from Metasploit. Th
 
 ```
 $ go get -u https://github.com/edermi/go-tomcat-mgmt-scanner
-$ go build # for your current architecture/OS
+$ make # builds for some architectures/platforms and drops binaries to build/
 
 # or
 
@@ -33,7 +33,9 @@ $ ....
 ./go-tomcat-mgmt-scanner -help
 Usage of ./go-tomcat-mgmt-scanner:
   -concurrency uint
-    	Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'. (default 150)
+    	Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'. (default 100)
+  -debug
+    	Enable debugging output.
   -managerpath string
     	Manager path. (default "/manager/html")
   -ports string
