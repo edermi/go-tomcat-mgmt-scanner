@@ -11,7 +11,7 @@ Current project version: 1.0
 # About
 
 A simple brute force scanner that tries to identify tomcat manager applications. If such a manager is found, it tries to find valid login credentials by trying common combinations.
-The initial wordlists for credential brute forcing are those from Metasploit. The scanner supports userpass files containing `<user>:<password>` entries and files containing solely usernames or passwords which are tried in every possible combination.
+The initial wordlists for credential brute forcing are those from Metasploit. The scanner supports userpass files containing `<user>:<password>` entries and files containing solely usernames or passwords which are tried in every possible combination. **There is currently no logic to check if found applications are actually Tomcat manager login pages**. This means that the scanner may also be used to brute force any HTTP auth.
 
 # Build
 
@@ -49,3 +49,7 @@ Usage of ./go-tomcat-mgmt-scanner:
 # License
 
 See LICENSE. User and password lists are taken from Metasploit project which are licensed BSD 3-clause.
+
+# DISCLAIMER
+
+The usual stuff. Don't do bad things and only use it against targets you are permitted to attack. You are on your own if something breaks.
