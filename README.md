@@ -6,7 +6,7 @@ A simple scanner to find and brute force tomcat manager logins.
 
 This is just a toy project to learn and get used to golang, feedback is appreciated!
 
-Current project version: 1.0 
+Current project version: 1.1.0
 
 # About
 
@@ -27,23 +27,28 @@ $ env GOOS=linux GOARCH=amd64 go build # x64 linux
 $ ....
 ```
 
-# Run
+# Usage
 
 ```
-./go-tomcat-mgmt-scanner -help
-Usage of ./go-tomcat-mgmt-scanner:
   -concurrency uint
     	Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'. (default 100)
   -debug
     	Enable debugging output.
   -managerpath string
     	Manager path. (default "/manager/html")
+  -passfile string
+    	A file containing passwords to test. Requires also a userfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
   -ports string
     	Comma separated list of target ports. (default "8080,8443,80,443,8000,8888")
   -randomize
     	Randomize the order that IP:Port is accessed. (default true)
   -target string
     	The target network range in CIDR notation, e.g. 10.10.10.0/24
+  -userfile string
+    	A file containing user names to test. Requires also a passfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
+  -userpassfile string
+    	A file containing username:password combinations. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
+
 ```
 
 # License
