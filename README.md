@@ -16,7 +16,7 @@ The initial wordlists for credential brute forcing are those from Metasploit. Th
 # Build
 
 ```
-$ go get -u https://github.com/edermi/go-tomcat-mgmt-scanner
+$ go get -u github.com/edermi/go-tomcat-mgmt-scanner
 $ make # builds for some architectures/platforms and drops binaries to build/
 
 # or
