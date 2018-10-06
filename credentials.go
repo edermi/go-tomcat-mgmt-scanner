@@ -14,12 +14,21 @@ type Guess struct {
 }
 
 func buildGuesses() []Guess {
-	guesses := loadUserPass()
-	users := loadUsers()
-	passwords := loadPasswords()
+	var users, passwords []string
+	var guesses []Guess
+	if scannerConfig.userpassfile != "" {
+		guesses = loadUserPass(scannerConfig.userpassfile)
+	}
+	if scannerConfig.userfile != "" {
+		users = loadFile(scannerConfig.userfile)
+	}
+	if scannerConfig.passfile != "" {
+		passwords = loadFile(scannerConfig.passfile)
+	}
 	guesses = append(guesses, makeGuesses(users, passwords)...)
 	if len(guesses) == 0 {
-		prettyPrintLn(err, "There are no user:password combinations loaded, therefore there won't be any brute force logins")
+		prettyPrintLn(warning, "There are no custom user:password combinations loaded, using default metasploit combinations")
+		guesses = defaultGuesses()
 	}
 	return guesses
 }
@@ -41,22 +50,14 @@ func loadFile(filename string) []string {
 	return content
 }
 
-func loadUserPass() []Guess {
+func loadUserPass(filename string) []Guess {
 	var guesses = make([]Guess, 0)
-	content := loadFile("./userpass.txt")
+	content := loadFile(filename)
 	for _, userpass := range content {
 		splitted := strings.Split(userpass, ":")
 		guesses = append(guesses, Guess{splitted[0], splitted[1]})
 	}
 	return guesses
-}
-
-func loadUsers() []string {
-	return loadFile("./users.txt")
-}
-
-func loadPasswords() []string {
-	return loadFile("./passwords.txt")
 }
 
 func makeGuesses(users, passwords []string) []Guess {

@@ -23,10 +23,13 @@ type TcInstance struct {
 
 // ScannerConfig holds the global configuration
 type ScannerConfig struct {
-	targetRange []net.IP
-	ports       []uint
-	managerPath string
-	goroutines  uint
+	targetRange  []net.IP
+	ports        []uint
+	managerPath  string
+	goroutines   uint
+	userfile     string
+	passfile     string
+	userpassfile string
 }
 
 // LogType is used to specify if and how information is printed
@@ -78,12 +81,15 @@ func parseCommandLineArgs() ScannerConfig {
 	managerPathUnparsed := flag.String("managerpath", "/manager/html", "Manager path.")
 	goroutines := flag.Uint("concurrency", 100, "Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'.")
 	randomizeHosts := flag.Bool("randomize", true, "Randomize the order that IP:Port is accessed.")
+	userfile := flag.String("userfile", "", "A file containing user names to test. Requires also a passfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.")
+	passfile := flag.String("passfile", "", "A file containing passwords to test. Requires also a userfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.")
+	userpassfile := flag.String("userpassfile", "", "A file containing username:password combinations. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.")
 	flag.BoolVar(&Debug, "debug", false, "Enable debugging output.")
 	flag.Parse()
 	ips := parseStringToNetwork(networkUnparsed, randomizeHosts)
 	ports := parseStringToPorts(portsUnparsed)
 	managerPath := parseStringToManagerPath(managerPathUnparsed)
-	sc := ScannerConfig{ips, ports, managerPath, *goroutines}
+	sc := ScannerConfig{ips, ports, managerPath, *goroutines, *userfile, *passfile, *userpassfile}
 	prettyPrintLn(info, fmt.Sprintf("Ports to scan: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ports)), ","), "[]"))) // ",".join(ports), but with static types... -.-
 	prettyPrintLn(info, fmt.Sprintf("Manager path: %s", managerPath))
 	prettyPrintLn(info, fmt.Sprintf("Debug is on: %t", Debug))
