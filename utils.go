@@ -23,7 +23,7 @@ type TcInstance struct {
 
 // ScannerConfig holds the global configuration
 type ScannerConfig struct {
-	targetRange  []net.IP
+	targetRange  <-chan net.IP
 	ports        []uint
 	managerPath  string
 	goroutines   uint
@@ -116,7 +116,7 @@ func parseStringToPorts(rawString *string) []uint {
 	return portSlice
 }
 
-func parseStringToNetwork(rawString *string, randomizeHosts *bool) []net.IP {
+func parseStringToNetwork(rawString *string, randomizeHosts *bool) <-chan net.IP {
 	var stringSplitted []string
 	stringSplitted = strings.Split(*rawString, "/")
 	ipString := stringSplitted[0]
@@ -131,7 +131,9 @@ func parseStringToNetwork(rawString *string, randomizeHosts *bool) []net.IP {
 		val, _ := strconv.ParseUint(ipStringSplitted[i], 10, 8)
 		ipArr[i] = uint8(val)
 	}
-	return expandNetwork(&net.IPNet{IP: net.IPv4(ipArr[0], ipArr[1], ipArr[2], ipArr[3]), Mask: net.CIDRMask(int(netRange), 32)}, *randomizeHosts)
+	targets := make(chan net.IP, 300)
+	expandNetworkToChan(&net.IPNet{IP: net.IPv4(ipArr[0], ipArr[1], ipArr[2], ipArr[3]), Mask: net.CIDRMask(int(netRange), 32)}, *randomizeHosts, targets)
+	return targets
 }
 
 func buildRequestURL(secure bool, instance *TcInstance) string {
@@ -157,6 +159,31 @@ func expandNetwork(network *net.IPNet, randomize bool) []net.IP {
 		})
 	}
 	return ips
+}
+
+// expandNetworkToChan expands a CIDR IPv4 network. The IPs are sent to a target channel.
+// If randomize is true, the IPs returned will be in a pseudo-random order.
+// Currently this only works in a single goroutine but may be parallelized in the future
+// using ZMap's sharding algorithm: https://jhalderm.com/pub/papers/zmap10gig-woot14.pdf
+func expandNetworkToChan(network *net.IPNet, randomize bool, targets chan<- net.IP) {
+	if randomize {
+		ips := expandNetwork(network, true)
+		go func() {
+			for _, ip := range ips {
+				targets <- ip
+			}
+		}()
+	} else {
+		go func() {
+			addrcount := cidr.AddressCount(network)
+			nextHost, _ := cidr.Host(network, 0)
+			for hostnum := uint64(0); hostnum < addrcount; hostnum++ {
+				nextHost = cidr.Inc(nextHost)
+				targets <- nextHost
+			}
+			close(targets)
+		}()
+	}
 }
 
 // Used to track how long the execution takes
