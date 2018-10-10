@@ -37,10 +37,15 @@ func main() {
 // This function fills the workQueue channel with tcinstances that are scanned
 // It also tracks process and reports status from time to time
 func fillQueue(workQueue chan<- TcInstance) {
-	numTargets := len(scannerConfig.targetRange) * len(scannerConfig.ports)
-	progress := 0
-	tenths := 1
-	for _, element := range scannerConfig.targetRange {
+	numTargets := scannerConfig.targetSize * uint64(len(scannerConfig.ports))
+	progress := uint64(0)
+	tenths := uint64(1)
+	for {
+		element, ok := <-scannerConfig.targetChan
+		if !ok {
+			break
+		}
+		prettyPrintLn(debug, fmt.Sprintf("Now sending to %v\n", element))
 		for _, port := range scannerConfig.ports {
 			if progress > tenths*(numTargets/10) {
 				prettyPrintLn(info, fmt.Sprintf("~%d0%% (%d/%d)", tenths, progress, numTargets))
