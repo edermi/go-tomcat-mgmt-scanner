@@ -25,3 +25,11 @@ build-x86-windows:
 
 build-darwin: 
 	GOOS=darwin go build -o build/$(TARGET)-macos . 
+
+calculate-hashes:
+	sha256sum build/* > build/checksums.txt
+
+create-archive:
+	zip -r release.zip build/
+
+release: all calculate-hashes create-archive
