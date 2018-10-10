@@ -23,7 +23,8 @@ type TcInstance struct {
 
 // ScannerConfig holds the global configuration
 type ScannerConfig struct {
-	targetRange  <-chan net.IP
+	targetChan   <-chan net.IP
+	targetSize   uint64
 	ports        []uint
 	managerPath  string
 	goroutines   uint
@@ -86,10 +87,10 @@ func parseCommandLineArgs() ScannerConfig {
 	userpassfile := flag.String("userpassfile", "", "A file containing username:password combinations. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.")
 	flag.BoolVar(&Debug, "debug", false, "Enable debugging output.")
 	flag.Parse()
-	ips := parseStringToNetwork(networkUnparsed, randomizeHosts)
+	ips, networkSize := parseStringToNetwork(networkUnparsed, randomizeHosts)
 	ports := parseStringToPorts(portsUnparsed)
 	managerPath := parseStringToManagerPath(managerPathUnparsed)
-	sc := ScannerConfig{ips, ports, managerPath, *goroutines, *userfile, *passfile, *userpassfile}
+	sc := ScannerConfig{ips, networkSize, ports, managerPath, *goroutines, *userfile, *passfile, *userpassfile}
 	prettyPrintLn(info, fmt.Sprintf("Ports to scan: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ports)), ","), "[]"))) // ",".join(ports), but with static types... -.-
 	prettyPrintLn(info, fmt.Sprintf("Manager path: %s", managerPath))
 	prettyPrintLn(info, fmt.Sprintf("Debug is on: %t", Debug))
@@ -116,24 +117,15 @@ func parseStringToPorts(rawString *string) []uint {
 	return portSlice
 }
 
-func parseStringToNetwork(rawString *string, randomizeHosts *bool) <-chan net.IP {
-	var stringSplitted []string
-	stringSplitted = strings.Split(*rawString, "/")
-	ipString := stringSplitted[0]
-	ipStringSplitted := strings.Split(ipString, ".")
-	if len(ipStringSplitted) != 4 {
+func parseStringToNetwork(rawString *string, randomizeHosts *bool) (<-chan net.IP, uint64) {
+	targets := make(chan net.IP, 300)
+	_, ipnet, e := net.ParseCIDR(*rawString)
+	if e != nil {
 		prettyPrintLn(err, "Error parsing IP address!")
 		panic("Either IP address is missing or format is wrong. Try e.g. -target 10.0.0.0/8 or -help")
 	}
-	netRange, _ := strconv.ParseUint(stringSplitted[1], 10, 8)
-	var ipArr [4]byte
-	for i := uint8(0); i < 4; i++ {
-		val, _ := strconv.ParseUint(ipStringSplitted[i], 10, 8)
-		ipArr[i] = uint8(val)
-	}
-	targets := make(chan net.IP, 300)
-	expandNetworkToChan(&net.IPNet{IP: net.IPv4(ipArr[0], ipArr[1], ipArr[2], ipArr[3]), Mask: net.CIDRMask(int(netRange), 32)}, *randomizeHosts, targets)
-	return targets
+	expandNetworkToChan(ipnet, *randomizeHosts, targets)
+	return targets, cidr.AddressCount(ipnet)
 }
 
 func buildRequestURL(secure bool, instance *TcInstance) string {
@@ -167,11 +159,21 @@ func expandNetwork(network *net.IPNet, randomize bool) []net.IP {
 // using ZMap's sharding algorithm: https://jhalderm.com/pub/papers/zmap10gig-woot14.pdf
 func expandNetworkToChan(network *net.IPNet, randomize bool, targets chan<- net.IP) {
 	if randomize {
-		ips := expandNetwork(network, true)
+		var firstNum, currNum uint64
+		group := getGroup(cidr.AddressCount(network))
+		cycle := makeCycle(group, time.Now().UTC().UnixNano())
+		firstNum = first(&cycle)
+		currNum = firstNum
 		go func() {
-			for _, ip := range ips {
-				targets <- ip
+			for {
+				nextHost, _ := cidr.Host(network, int(currNum))
+				targets <- nextHost
+				next(&cycle, &currNum)
+				if currNum == firstNum { // we did a full run through the cycle, so we are done
+					break
+				}
 			}
+			close(targets)
 		}()
 	} else {
 		go func() {
