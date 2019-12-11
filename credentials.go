@@ -7,29 +7,24 @@ import (
 	"strings"
 )
 
-// Guess where we store a username:password guess.
-type Guess struct {
-	username string
-	password string
-}
-
-func buildGuesses() []Guess {
+func buildGuesses(userfile, passfile, userpassfile string) []Guess {
 	var users, passwords []string
 	var guesses []Guess
-	if scannerConfig.userpassfile != "" {
-		guesses = loadUserPass(scannerConfig.userpassfile)
+	if userpassfile != "" {
+		guesses = loadUserPass(userpassfile)
 	}
-	if scannerConfig.userfile != "" {
-		users = loadFile(scannerConfig.userfile)
+	if userfile != "" {
+		users = loadFile(userfile)
 	}
-	if scannerConfig.passfile != "" {
-		passwords = loadFile(scannerConfig.passfile)
+	if passfile != "" {
+		passwords = loadFile(passfile)
 	}
 	guesses = append(guesses, makeGuesses(users, passwords)...)
 	if len(guesses) == 0 {
 		prettyPrintLn(warning, "There are no custom user:password combinations loaded, using default metasploit combinations")
 		guesses = defaultGuesses()
 	}
+	prettyPrintLn(info, fmt.Sprintf("%d user:password combinations loaded", len(guesses)))
 	return guesses
 }
 
