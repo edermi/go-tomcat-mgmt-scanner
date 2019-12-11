@@ -11,6 +11,14 @@ The initial wordlists for credential brute forcing are those from Metasploit. Th
 
 # Build
 
+Go >= 1.12 should work.
+
+## Docker (easy)
+
+`docker run --rm -v "$PWD":/build -w /build golang:latest make release`
+
+## Manually (needs go installed)
+
 ```
 $ go get -u github.com/edermi/go-tomcat-mgmt-scanner
 $ make # builds for some architectures/platforms and drops binaries to build/
