@@ -18,10 +18,10 @@ build-armv7-linux:
 	GOOS=linux GOARCH=arm GOARM=7 go build -o build/$(TARGET)-armv7-linux . 
 
 build-x64-windows: 
-	GOOS=windows GOARCH=amd64 go build -o build/$(TARGET)-x64-windows . 
+	GOOS=windows GOARCH=amd64 go build -o build/$(TARGET)-x64-windows.exe . 
 
 build-x86-windows: 
-	GOOS=windows GOARCH=386 go build -o build/$(TARGET)-x86-windows . 
+	GOOS=windows GOARCH=386 go build -o build/$(TARGET)-x86-windows.exe . 
 
 build-darwin: 
 	GOOS=darwin go build -o build/$(TARGET)-macos . 
@@ -29,7 +29,4 @@ build-darwin:
 calculate-hashes:
 	sha256sum build/* > build/checksums.txt
 
-create-archive:
-	zip -r release.zip build/
-
-release: all calculate-hashes create-archive
+release: all calculate-hashes 
