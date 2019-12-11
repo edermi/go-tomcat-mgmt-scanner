@@ -1,12 +1,8 @@
 # go-tomcat-mgmt-scanner
 
-[![baby-gopher](https://raw.githubusercontent.com/drnic/babygopher-site/gh-pages/images/babygopher-logo-small.png)](http://www.babygopher.org)
+A small tool to find and brute force tomcat manager logins.
 
-A simple scanner to find and brute force tomcat manager logins.
-
-This is just a toy project to learn and get used to golang, feedback is appreciated!
-
-Current project version: 1.1.0
+Current project version: 2.0
 
 # About
 
@@ -29,26 +25,33 @@ $ ....
 
 # Usage
 
+Example: `./go-tomcat-mgmt-scanner -target 172.16.10.0/24 -ports 80,443 -concurrency 1000 -timeout 2000ms -debug`
+
+Command line options: 
+
 ```
+  -avoid-lockout
+    	Try to avoid lockout by waiting Tomcat's default lockout treshold between tries. Your scan may get suuuper slow, but in the end, success matters.
   -concurrency uint
     	Concurrent Goroutines to use. Due to kernel limitations on linux, it should not be more than 'ulimit -n / 7'. (default 100)
   -debug
     	Enable debugging output.
+  -ignoreInsecure
+    	Ignore certificate errors. If you only want secure connections, set this to false. (default true)
   -managerpath string
     	Manager path. (default "/manager/html")
   -passfile string
     	A file containing passwords to test. Requires also a userfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
   -ports string
     	Comma separated list of target ports. (default "8080,8443,80,443,8000,8888")
-  -randomize
-    	Randomize the order that IP:Port is accessed. (default true)
   -target string
     	The target network range in CIDR notation, e.g. 10.10.10.0/24
+  -timeout duration
+    	HTTP timeout. Specify with unit suffix, e.g. '2500ms' or '3s'. (default 2s)
   -userfile string
     	A file containing user names to test. Requires also a passfile. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
   -userpassfile string
     	A file containing username:password combinations. If neither user-, password- and userpass list is given, the default lists from Metasploit project are used.
-
 ```
 
 # License
